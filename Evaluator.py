@@ -7,15 +7,13 @@ from sys import stdout
 
 _TARGETS = np.array([10 ** i for i in range(-10, 10)])
 
-def evaluate(repair_mode: str, dimensions: int, iterations: int, objectives: List, lambda_arg: int, stop_after: int, visual: bool, correction: bool):
+def evaluate(dimensions: int, iterations: int, objectives: List, lambda_arg: int, stop_after: int, visual: bool):
     """
     evaluate() runs the algorithm multiple times (exactly 'iteration' times).
     Data about ecdf, sigma, condition number etc. is collected.
     Then, data is averaged across different iterations and returned as a tuple of lists, each list ready to be plotted.
     Parameters
     ----------
-    repair_mode : str
-        Bound constraint repair method. Chosen from: None, projection, reflection, resampling.
     dimensions : int
         Objective function dimensionality.
     iterations : int
@@ -39,17 +37,16 @@ def evaluate(repair_mode: str, dimensions: int, iterations: int, objectives: Lis
     eigens_list = []
     cond_list = []
     mean_list = []
-    repair_list = []
     evals_per_gen = None
     print("Starting evaluation...")
     lambda_prompt = str(lambda_arg) if lambda_arg is not None else "default"
-    print(f"dimensions: {dimensions}; iterations: {iterations}; population: {lambda_prompt}; repair: {repair_mode}; correction: {correction}")
+    print(f"dimensions: {dimensions}; iterations: {iterations}; population: {lambda_prompt}")
     for objective in objectives:
         print("    Currently running:", objective.__name__)
         for iteration in range(iterations):
             stdout.write(f"\rIteration: {1+iteration} / {iterations}")
             stdout.flush()
-            algo = CMAES(objective, dimensions, repair_mode, lambda_arg, stop_after, visual, correction) # algorithm runs here
+            algo = CMAES(objective, dimensions, lambda_arg, stop_after, visual) # algorithm runs here
             if evals_per_gen == None:
                 evals_per_gen = algo.evals_per_iteration()
             else:
@@ -60,7 +57,6 @@ def evaluate(repair_mode: str, dimensions: int, iterations: int, objectives: Lis
             eigens_list.append(algo.eigen_history())
             cond_list.append(algo.cond_history())
             mean_list.append(algo.mean_history())
-            repair_list.append(algo.repair_history())
         print()
 
     formatted_ecdfs = _format_list(ecdfs_list, evals_per_gen)
@@ -68,9 +64,8 @@ def evaluate(repair_mode: str, dimensions: int, iterations: int, objectives: Lis
     formatted_diffs = _format_list(diffs_list, evals_per_gen)
     formatted_conds = _format_list(cond_list, evals_per_gen)
     formatted_means = _format_list(mean_list, evals_per_gen)
-    formatted_repairs = _format_list(repair_list, evals_per_gen)
     formatted_eigens = _format_eigenvalues(eigens_list, evals_per_gen)
-    return (formatted_ecdfs, formatted_sigmas, formatted_diffs, formatted_eigens, formatted_conds, formatted_means, formatted_repairs, evals_per_gen)
+    return (formatted_ecdfs, formatted_sigmas, formatted_diffs, formatted_eigens, formatted_conds, formatted_means, evals_per_gen)
 
 
 def _format_list(input_list: List, evals_per_gen: int) -> Tuple:
@@ -111,7 +106,11 @@ def _format_eigenvalues(eigens_list: List, evals_per_gen: int) -> Tuple:
         other_axes.append(sum[:,i])
     return x_axis, other_axes
 
-def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual: bool, rmode: str, objectives: List[str]):
+def just_show(dimensions: int, iterations: int, lbd: int, stop_after: int, objective):
+    for _ in range(iterations):
+        algo = CMAES(objective, dimensions, lbd, stop_after, visuals=True)
+
+def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual: bool, objectives: List[str]):
     """
     run_test()) is the main function. It runs the evaluate function for all the algorithm varianst.
     All of them are plotted separately to be compared.
@@ -122,25 +121,21 @@ def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual
     eigen_plots = []
     cond_plots = []
     mean_plots = []
-    repair_plots = []
 
-    run_params = [(False, False), (True, True)]
-    for corr, v in run_params:
-        ecdf, sigma, diff, eigen, cond, mean, rep, lambda_val = evaluate(rmode, dimensions, iterations, objectives, lbd, stop_after, v and visual, corr)
+    ecdf, sigma, diff, eigen, cond, mean, lambda_val = evaluate(dimensions, iterations, objectives, lbd, stop_after, visual)
+    legend = "This is a plot"
 
-        legend = "Korekta włączona" if corr else "Korekta wyłączona"
-        ecdf_plots.append((ecdf[0], ecdf[1], legend))
-        sigma_plots.append((sigma[0], sigma[1], legend))
-        diff_plots.append((diff[0], diff[1], legend))
-        eigen_plots.append((eigen[0], eigen[1], legend))
-        cond_plots.append((cond[0], cond[1], legend))
-        mean_plots.append((mean[0], mean[1], legend))
-        repair_plots.append((rep[0], rep[1], legend))
+    ecdf_plots.append((ecdf[0], ecdf[1], legend))
+    sigma_plots.append((sigma[0], sigma[1], legend))
+    diff_plots.append((diff[0], diff[1], legend))
+    eigen_plots.append((eigen[0], eigen[1], legend))
+    cond_plots.append((cond[0], cond[1], legend))
+    mean_plots.append((mean[0], mean[1], legend))
 
     lambda_prompt = str(lbd) if lbd is not None else "Domyślnie 4n=" + str(lambda_val)
-    title_str = f"Wymiarowość: {dimensions}; Liczebność populacji: {lambda_prompt};\nLiczba iteracji: {stop_after}; Liczba przebiegów: {iterations};\nMetoda naprawy: {rmode}; Funkcja celu: {objectives[0].__name__}"; 
+    title_str = f"Wymiarowość: {dimensions}; Liczebność populacji: {lambda_prompt};\nLiczba iteracji: {stop_after}; Liczba przebiegów: {iterations}; Funkcja celu: {objectives[0].__name__}"; 
     plt.rcParams['font.size'] = '18'
-    ecdf_ax = plt.subplot(511)
+    ecdf_ax = plt.subplot(411)
     plt.title(title_str)
     plt.setp(ecdf_ax.get_xticklabels(), visible = False)
     for ecdf_plot in ecdf_plots:
@@ -149,50 +144,24 @@ def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual
     plt.ylabel("ECDF", rotation=45, horizontalalignment="right", verticalalignment="center")
     plt.ylim(0,1)
     
-    sigma_ax = plt.subplot(512, sharex=ecdf_ax)
+    sigma_ax = plt.subplot(412, sharex=ecdf_ax)
     plt.setp(sigma_ax.get_xticklabels(), visible = False)
     for sigma in sigma_plots:
         plt.plot(sigma[0], sigma[1], label=sigma[2])
     plt.yscale("log")
     plt.ylabel("Wartości sigma", rotation=45, horizontalalignment="right")
 
-    diff_ax = plt.subplot(513, sharex=ecdf_ax)
+    diff_ax = plt.subplot(413, sharex=ecdf_ax)
     plt.setp(diff_ax.get_xticklabels(), visible = False)
     for diff in diff_plots:
         plt.plot(diff[0], diff[1], label=diff[2])
     plt.ylabel("Ilorazy kolejnych sigma", rotation=45, horizontalalignment="right")
 
-    cond_ax = plt.subplot(514, sharex=ecdf_ax)
+    cond_ax = plt.subplot(414, sharex=ecdf_ax)
     plt.setp(cond_ax.get_xticklabels(), visible = False)
     for cond in cond_plots:
         plt.plot(cond[0], cond[1], label=cond[2])
     plt.ylabel("Wskaźnik uwarunkowania C", rotation=45, horizontalalignment="right")
-
-    # mean_ax = plt.subplot(xxx, sharex=ecdf_ax) # one more plot - function value of population middle point
-    # plt.setp(mean_ax.get_xticklabels(), visible = False)
-    # for mean in mean_plots:
-    #     plt.plot(mean[0], mean[1], label=mean[2])
-    # plt.ylabel("f(mean)", rotation=45, horizontalalignment="right")
-    # plt.yscale("log")
-
-    rep_ax = plt.subplot(515, sharex=ecdf_ax)
-    for repair in repair_plots:
-        plt.plot(repair[0], repair[1], label=repair[2])
-    plt.ylim(0,1)
-    plt.ylabel("% naprawianych punktów", rotation=45, horizontalalignment="right")
-    plt.xlabel("Liczba obliczeń funkcji celu")
-
-    plt.subplots_adjust(hspace=0.2)
-
-    fig, axs = plt.subplots(2,1, sharex = True, sharey=True)
-    plt.yscale("log")
-    fig.suptitle(title_str)
-    fig.subplots_adjust(hspace=0, wspace=0)
-
-    for index, eigen_plot in enumerate(eigen_plots):
-        for eigenvalue in eigen_plot[1]:
-            axs[index%2].plot(eigen_plot[0], eigenvalue)
-        axs[index%2].title.set_text(eigen_plot[2])
 
     plt.show()
 

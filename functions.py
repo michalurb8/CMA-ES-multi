@@ -1,52 +1,73 @@
 import numpy as np
-from typing import Callable
 
-def quadratic(x: np.ndarray) -> float:
-    return float(np.dot(x, x))
+gaussian = lambda x, y, xmu=0, ymu=0 : -np.exp(-((x-xmu)**2+(y-ymu)**2)/4)
 
+criteriumDict = {
+    "dwa hantle równowaga plus punkt" : [
+        lambda x,y : 0.6*gaussian(x,y, 0,3) + 0.4*gaussian(x,y, 0,-2),
+        lambda x,y : 0.6*gaussian(x,y, 3,0) + 0.4*gaussian(x,y, -2,0),
+        lambda x,y : gaussian(x,y),
+    ],
 
+    "dwa hantle równowaga" : [
+        lambda x,y : 0.6*gaussian(x,y, 0,3) + 0.4*gaussian(x,y, 0,-2),
+        lambda x,y : 0.6*gaussian(x,y, 3,0) + 0.4*gaussian(x,y, -2,0),
+    ],
 
+    "rosenbrock" : [
+        lambda x,y : 0.01*(x-1)**2 + (y-x**2)**2,
+        lambda x,y : gaussian(x,y)
+    ],
 
-def bent_cigar(x: np.ndarray) -> float:
-    return x[0]**2 + 1e6 * np.sum(x[1:]**2)
+    "sinusy" : [
+        lambda x,y : np.sin(0.2*x)*(0.2*x-1)*(0.2*y-2),
+        lambda x,y : np.cos(0.2*y)*0.2*x
+    ],
 
-def rastrigin(x: np.ndarray) -> float:
-    return float(np.sum(x ** 2 + -10 * (np.cos(2 * np.pi * x)) + 10))
+    "równe hantle plus punkt" : [
+        lambda x,y : gaussian(x,y, 2,2) + gaussian(x,y, 2,-2),
+        lambda x,y : gaussian(x,y, -2,0.1),
+    ],
 
-def elliptic(x: np.ndarray) -> float:
-    dim = x.shape[0]
-    if dim == 1:
-        return float(np.dot(x, x))
-    arr = [np.power(1e6, p) for p in np.arange(0, dim) / (dim - 1)]
-    return float(np.matmul(arr, x ** 2))
+    "nierówno skrzyżowane hantle" : [
+        lambda x,y : gaussian(x,y, 0,3) + gaussian(x,y, 0,-2),
+        lambda x,y : gaussian(x,y, 3,0) + gaussian(x,y, -2,0),
+    ],
 
-def hgbat(x: np.ndarray) -> float:
-    summ1 = np.sqrt(np.abs(np.dot(x,x) - sum(x)))
-    summ2 = (0.5 * np.dot(x,x) + sum(x)) / x.shape[0]
-    return summ1 + summ2
+    "linia plus punkt" : [
+        lambda x,y : gaussian(x,y, 0,0),
+        lambda x,y : (x+y)/10
+    ],
 
-def rosenbrock(x: np.ndarray) -> float:
-    return sum([x[i]**2 + 100*(x[i+1] - x[i]**2 - 2*x[i])**2 for i in range(x.shape[0] - 1)])
+    "linia plus równe hantle plus punkt" : [
+        lambda x,y : gaussian(x,y, 2,2) + gaussian(x,y, 2,-2),
+        lambda x,y : gaussian(x,y, -2,0),
+        lambda x,y : (x+y)/10
+    ],
 
-def griewank(x: np.ndarray) -> float:
-    product = np.product(np.array([np.cos(x[i-1]/i) for i in range(1, x.shape[0] + 1)]))
-    return np.dot(x,x)/4000 - product + 1
+    "kwadrat" : [
+        lambda x,y : gaussian(x,y,2,2),
+        lambda x,y : gaussian(x,y,-2,2),
+        lambda x,y : gaussian(x,y,-2,-2),
+        lambda x,y : gaussian(x,y,2,-2),
+    ],
 
-def ackley(x: np.ndarray) -> float:
-    exp1 = -20 * np.exp(-0.2*np.sqrt(np.sum(x**2)/len(x))) + 20
-    exp2 = -1  * np.exp(np.sum(np.cos(2*np.pi*x)/len(x))) + np.e
-    return exp1 + exp2
+    "trójkąt równoramienny" : [
+        lambda x,y : gaussian(x,y,-2,-2),
+        lambda x,y : gaussian(x,y,2,-2),
+        lambda x,y : gaussian(x,y,0,3),
+    ],
 
-def discus(x: np.ndarray) -> float:
-    return 1e6*x[0]**2 + np.sum(x[1:]**2)
+    "trzy współniniowe" : [
+        lambda x,y : gaussian(x,y,2,0),
+        lambda x,y : gaussian(x,y,-2,0),
+        lambda x,y : gaussian(x,y,0,0),
+    ],
 
+    "skrzyżowane nierówne hantle" : [
+        lambda x,y : 0.501*gaussian(x,y, 0,2) + 0.499*gaussian(x,y, 0,-2),
+        lambda x,y : 0.501*gaussian(x,y, 2,0) + 0.499*gaussian(x,y, -2,0),
+    ],
+}
 
-
-# def func(x: np.ndarray) -> float:
-
-def Get_by_name(name: str) -> Callable:
-    return globals()[name]
-
-
-if __name__ == "__main__":
-    pass
+criteria = criteriumDict[list(criteriumDict.keys())[0]]

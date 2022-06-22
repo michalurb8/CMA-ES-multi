@@ -20,12 +20,10 @@ parser.add_argument('-s', '--stop', type=int, default=150,
 parser.add_argument('-v', '--vis', default=False,
                     help='Turn on visualisation.', action='store_true')
 
-parser.add_argument('-r', '--repair', type=str, default=None,
-                    help='Repair method')
-
 parser.add_argument('-o', '--objective', type=str, default="elliptic",
                     help='Objective function')
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    Evaluator.run_test(args.dimensions, args.iterations, args.lbd, args.stop, args.vis, args.repair, [functions.Get_by_name(args.objective)])
+    Evaluator.just_show(args.dimensions, args.iterations, args.lbd, args.stop, functions.Get_by_name(args.objective))
+    # Evaluator.run_test(args.dimensions, args.iterations, args.lbd, args.stop, args.vis, [functions.Get_by_name(args.objective)])

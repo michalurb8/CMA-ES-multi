@@ -6,11 +6,10 @@ _EPS = 1e-50
 _POINT_MAX = 1e100
 _SIGMA_MAX = 1e100
 
-_DELAY = 0.1
+_DELAY = 0.3
 
 infp = float('inf')
 infn = float('-inf')
-_RESAMPLING_LIMIT = 10
 
 class CMAES:
     """
@@ -20,30 +19,19 @@ class CMAES:
         Chosen from: quadratic, elliptic, bent, rastrigin, rosenbrock, ackley
     dimensions: int
         Objective function dimensionality.
-    repair_mode: str
-        Bound constraint repair method. Chosen from: None, projection, reflection, resampling.
     lambda_arg: int
         Population count. Must be > 3, if set to None, default value will be computed.
     stop_after: int
         How many iterations are to be run
     visuals: bool
         If True, every algorithm generation will be visualised (only 2 first dimensions)
-    move_delta: bool
-        If True, delta (y_w) will be change by the sum of repair vectors
     """
-    def __init__(self, objective_function, dimensions: int, repair_mode: str, lambda_arg: int = None, stop_after: int = 50, visuals: bool = False, move_delta: bool = False):
+    def __init__(self, objective_functions, dimensions: int, lambda_arg: int = None, stop_after: int = 50, visuals: bool = False):
         assert dimensions > 0, "Number of dimensions must be greater than 0"
         self._dimension = dimensions
-        self._fitness = objective_function
-        self._repair_mode = repair_mode
+        self._criteria = objective_functions
         self._stop_after = stop_after
         self._visuals = visuals
-        self._move_delta = move_delta
-
-        assert self._repair_mode in [None, 'projection', 'reflection', 'resampling'], 'Incorrect repair mode'
-
-        # Set bounds:
-        self._bounds = [(-0.1,100) for _ in range(self._dimension)]
 
         # Initial point
         self._xmean = 10 + 80 * np.random.uniform(size = self._dimension)
@@ -95,7 +83,6 @@ class CMAES:
         self._sigma_history = []
         self._eigen_history = np.zeros((self._stop_after, self._dimension))
         self._mean_history = []
-        self._repair_history = []
 
         # Store best found value so far for ECDF calculation
         self._best_value = infp
@@ -111,21 +98,15 @@ class CMAES:
             self._sigma_history.append(self._sigma)
             self._eigen_history[self._generation, :] = np.multiply(self._D, np.ones(self._dimension))**2
 
-            solutions = [] # this is a list of tuples (x, y , value)
-            repair_count = 0
+            solutions = [] # this is a list of tuples: [(x, value), (x, value), ...]
             for _ in range(self._lambda):
-                x = self._sample_solution() # x is the original point
-                y = self._repair(x, self._bounds, self._repair_mode) # y is the repaired point
-                if not np.all(x == y):
-                    repair_count += 1
+                x = self._sample_solution()
 
-                value = self._objective(y)
-                self._best_value = min(value, self._best_value)
-                solutions.append((x, y, value))
+                values = np.array([criterium(x) for criterium in self.criteria])
+                solutions.append((x, values))
             # Update algorithm parameters.
             assert len(solutions) == self._lambda, "There must be exactly lambda points generated"
-            self._repair_history.append(repair_count / self._lambda)
-            self._update(solutions, repair_count)
+            self._update(solutions)
             self._results.append((gen_count, self._best_value))
 
     def _sample_solution(self) -> np.ndarray:
@@ -137,22 +118,18 @@ class CMAES:
         D = np.sqrt(np.where(D2 < 0, _EPS, D2))
         return B, D
 
-    def _update(self, solutions: List[Tuple[np.ndarray, np.ndarray, float]], repair_count: int) -> None:
+    def _update(self, solutions: List[Tuple[np.ndarray, np.ndarray, float]]) -> None:
         assert len(solutions) == self._lambda, "Must evaluate solutions with length equal to population size."
         for s in solutions:
             assert np.all(
                 np.abs(s[0]) < _POINT_MAX
             ), f"Absolute value of all generated points must be less than {_POINT_MAX} to avoid overflow errors."
-            assert np.all(
-                np.abs(s[1]) < _POINT_MAX
-            ), f"Absolute value of all repaired points must be less than {_POINT_MAX} to avoid overflow errors."
 
         self._generation += 1
-        solutions.sort(key=lambda solution: solution[-1]) #sort population by function value
+        solutions.sort(key=lambda solution: solution[1]) #sort population by function value
 
         # ~ N(m, sigma^2 C)
-        originals = np.array([s[0] for s in solutions])
-        population = np.array([s[1] for s in solutions])
+        population = np.array([s[0] for s in solutions])
         # ~ N(0, C)
         y_k = (population - self._xmean) / (self._sigma + _EPS)
 
@@ -160,30 +137,14 @@ class CMAES:
         selected = y_k[: self._mu]
         y_w = np.mean(selected, axis=0) # cumulated delta vector
 
-        # Delta correction step
-        if self._move_delta:
-            # Delta 1: difference between generated points mean and repaired points mean:
-            delta1 = (np.mean(originals, axis=0) - np.mean(population, axis=0)) / (self._sigma + _EPS)
-            # Delta 2: difference between selected generated points mean and selected repaired points mean:
-            delta2 = (np.mean(originals[:self._mu], axis=0) - np.mean(population[:self._mu], axis=0)) / (self._sigma + _EPS)
-
-            alpha = 0.5 * repair_count/self._lambda
-            delta1_scaled = _resize(delta1, y_w, alpha)
-            delta2_scaled = _resize(delta2, y_w, alpha)
-
-            correction = delta2_scaled
-            y_w += correction
-
-        self._mean_history.append(self._objective(self._xmean))
+        self._mean_history.append(self._fitness(self._xmean))
 
         self._xmean += self._sigma * y_w
 
         if self._visuals == True and self._dimension > 1:
             title = "Iteracja " + str(self._generation) + ", \n"
-            # title += ", Metoda naprawy: " + str(self._repair_mode)
             title += "Liczebność populacji: " + str(self._lambda) + ", \n"
             title += "Wymiarowość: " + str(self._dimension) + ", \n"
-            # title += ", Korekta: " + str(self._move_delta)
             title += "Funkcja celu: " + str(self._fitness.__name__)
             plt.rcParams["figure.figsize"] = (8,9)
             plt.rcParams['font.size'] = '22'
@@ -195,11 +156,6 @@ class CMAES:
 
             plt.axvline(0, linewidth=4, c='black')
             plt.axhline(0, linewidth=4, c='black')
-            if self._repair_mode != None:
-                plt.axvline(self._bounds[-1][0], linewidth=2, c='red')
-                plt.axvline(self._bounds[-2][1], linewidth=2, c='red')
-                plt.axhline(self._bounds[-1][0], linewidth=2, c='red')
-                plt.axhline(self._bounds[-2][1], linewidth=2, c='red')
             x1 = [point[-1] for point in population]
             x2 = [point[-2] for point in population]
             plt.scatter(x1, x2, s=50)
@@ -243,12 +199,6 @@ class CMAES:
                 + self._lr_c_mu * rank_mu
         )
     
-    def _objective(self, x):
-        assert self._dimension > 0, 'Number of dimensions must be greater than 0.'
-        value = self._fitness(x)
-        assert value >= 0, 'Function values must be greater or equal 0'
-        return  value
-
     def sigma_history(self) -> List[float]:
         return self._sigma_history
 
@@ -280,67 +230,5 @@ class CMAES:
             ecdf.append(passed / len(targets))
         return ecdf
     
-    def repair_history(self) -> List[float]:
-        return self._repair_history
-
     def evals_per_iteration(self) -> int:
         return self._lambda
-
-    def _repair(self, x: np.array, bounds: List[Tuple[float, float]], repair_mode: str) -> np.array:
-        """
-        Parameters
-        ----------
-        x: numpy array
-            Represents a single point in search space
-        bounds: List of dim Tuples of two floats
-            Describe lower and upper bound in each dimension
-        repair_mode: str
-            Bound constraint repair method. Chosen from: None, projection, reflection, resampling.
-        ----------
-        This method repairs x according to repair_mode and bounds.
-        x is replaced with the repaired value.
-        Repair vector is returned, equal to x - original_x.
-        """
-        assert self._dimension == len(bounds), "Constraint number and dimensionality do not match"
-        repaired = np.copy(x)
-        if repair_mode == None:
-            pass
-        elif self._check_point(x):
-            pass
-        elif repair_mode == 'reflection':
-            for i in range(len(x)):
-                while repaired[i] < bounds[i][0] or repaired[i] > bounds[i][1]:
-                    if repaired[i] < bounds[i][0]:
-                        repaired[i] = 2 * bounds[i][0] - repaired[i]
-                    if repaired[i] > bounds[i][1]:
-                        repaired[i] = 2 * bounds[i][1] - repaired[i]
-        elif repair_mode == 'projection':
-            for i in range(len(repaired)):
-                if repaired[i] < bounds[i][0]:
-                    repaired[i] = bounds[i][0]
-                elif repaired[i] > bounds[i][1]:
-                    repaired[i] = bounds[i][1]
-        elif repair_mode == 'resampling':
-            for _ in range(_RESAMPLING_LIMIT):
-                new = self._sample_solution()
-                for i in range(len(repaired)):
-                    repaired[i] = new[i]
-                if self._check_point(repaired):
-                    break
-            repaired = self._repair(repaired, bounds, 'projection')
-        else:
-            raise Exception("Incorrect repair mode")
-        return repaired
-    
-    def _check_point(self, x: np.array):
-        for i in range(len(x)):
-            if x[i] < self._bounds[i][0] or x[i] > self._bounds[i][1]:
-                return False
-        return True
-
-def _resize(vec1: np.array, vec2: np.array, const: float) -> None:
-    #returns vec1 rescaled to const*lenght of vec2
-    vec1 = vec1 / (np.linalg.norm(vec1) + _EPS)
-    scale = const * np.linalg.norm(vec2)
-    vec1 *= scale
-    return vec1
