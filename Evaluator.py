@@ -46,7 +46,7 @@ def evaluate(dimensions: int, iterations: int, objectives: List, lambda_arg: int
         for iteration in range(iterations):
             stdout.write(f"\rIteration: {1+iteration} / {iterations}")
             stdout.flush()
-            algo = CMAES(objective, dimensions, lambda_arg, stop_after, visual) # algorithm runs here
+            algo = CMAES(objective, dimensions, stop_after, lambda_arg, visual) # algorithm runs here
             if evals_per_gen == None:
                 evals_per_gen = algo.evals_per_iteration()
             else:
@@ -108,7 +108,7 @@ def _format_eigenvalues(eigens_list: List, evals_per_gen: int) -> Tuple:
 
 def just_show(dimensions: int, iterations: int, lbd: int, stop_after: int, objective):
     for _ in range(iterations):
-        algo = CMAES(objective, dimensions, lbd, stop_after, visuals=True)
+        algo = CMAES(objective, dimensions, stop_after, lbd, visuals=True)
 
 def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual: bool, objectives: List[str]):
     """

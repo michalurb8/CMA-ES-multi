@@ -1,6 +1,6 @@
 import argparse
 import Evaluator
-import functions
+from functions import criteria
 
 parser = argparse.ArgumentParser(prog="CMA-ES",
                                  description='This program allows you to run CMA-ES')
@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(prog="CMA-ES",
 parser.add_argument('-i', '--iterations', type=int, default=10,
                     help='How many algorithm runs to be averaged.')
 
-parser.add_argument('-d', '--dimensions', type=int, default=10,
+parser.add_argument('-d', '--dimensions', type=int, default=2,
                     help='Number of dimensions.')
 
 parser.add_argument('-l', '--lbd', type=int, default=None,
@@ -25,5 +25,5 @@ parser.add_argument('-o', '--objective', type=str, default="elliptic",
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    Evaluator.just_show(args.dimensions, args.iterations, args.lbd, args.stop, functions.Get_by_name(args.objective))
+    Evaluator.just_show(args.dimensions, args.iterations, args.lbd, args.stop, criteria)
     # Evaluator.run_test(args.dimensions, args.iterations, args.lbd, args.stop, args.vis, [functions.Get_by_name(args.objective)])

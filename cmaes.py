@@ -26,7 +26,7 @@ class CMAES:
     visuals: bool
         If True, every algorithm generation will be visualised (only 2 first dimensions)
     """
-    def __init__(self, objective_functions, dimensions: int, lambda_arg: int = None, stop_after: int = 50, visuals: bool = False):
+    def __init__(self, objective_functions, dimensions: int, stop_after:int, lambda_arg: int = None, visuals: bool = False):
         assert dimensions > 0, "Number of dimensions must be greater than 0"
         self._dimension = dimensions
         self._criteria = objective_functions
@@ -34,7 +34,7 @@ class CMAES:
         self._visuals = visuals
 
         # Initial point
-        self._xmean = 10 + 80 * np.random.uniform(size = self._dimension)
+        self._xmean = np.random.uniform(size = self._dimension)
         # Step size
         self._sigma = 1
 
@@ -102,7 +102,7 @@ class CMAES:
             for _ in range(self._lambda):
                 x = self._sample_solution()
 
-                values = np.array([criterium(x) for criterium in self.criteria])
+                values = np.array([criterium(x) for criterium in self._criteria])
                 solutions.append((x, values))
             # Update algorithm parameters.
             assert len(solutions) == self._lambda, "There must be exactly lambda points generated"
@@ -126,7 +126,7 @@ class CMAES:
             ), f"Absolute value of all generated points must be less than {_POINT_MAX} to avoid overflow errors."
 
         self._generation += 1
-        solutions.sort(key=lambda solution: solution[1]) #sort population by function value
+        solutions.sort(key=lambda solution: solution[1][0]) #sort population by function value
 
         # ~ N(m, sigma^2 C)
         population = np.array([s[0] for s in solutions])
@@ -137,7 +137,7 @@ class CMAES:
         selected = y_k[: self._mu]
         y_w = np.mean(selected, axis=0) # cumulated delta vector
 
-        self._mean_history.append(self._fitness(self._xmean))
+        self._mean_history.append(self._criteria[0](self._xmean))
 
         self._xmean += self._sigma * y_w
 
@@ -145,7 +145,7 @@ class CMAES:
             title = "Iteracja " + str(self._generation) + ", \n"
             title += "Liczebność populacji: " + str(self._lambda) + ", \n"
             title += "Wymiarowość: " + str(self._dimension) + ", \n"
-            title += "Funkcja celu: " + str(self._fitness.__name__)
+            # title += "Funkcja celu: " + str(self._fitness.__name__)
             plt.rcParams["figure.figsize"] = (8,9)
             plt.rcParams['font.size'] = '22'
             plt.tight_layout()
