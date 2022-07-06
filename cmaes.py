@@ -78,20 +78,12 @@ class CMAES:
         # Store current generation number
         self._generation = 0
 
-        # Store important values at each generation
-        self._sigma_history = []
-        self._eigen_history = np.zeros((self._stop_after, self._dimension))
-        self._mean_history = []
-
         # Run the algorithm immediately
         self._run()
 
     def _run(self):
         for _ in range(self._stop_after):
             self._B, self._D = self._eigen_decomposition()
-
-            self._sigma_history.append(self._sigma)
-            self._eigen_history[self._generation, :] = np.multiply(self._D, np.ones(self._dimension))**2
 
             solutions = [] # this is a list of tuples: [(x, value), (x, value), ...]
             for _ in range(self._lambda):
@@ -120,7 +112,14 @@ class CMAES:
             ), f"Absolute value of all generated points must be less than {_POINT_MAX} to avoid overflow errors."
 
         self._generation += 1
-        solutions.sort(key=lambda solution: solution[1][0]) #sort population by function value
+
+        #######################
+        #######################
+        #######################
+        # TODO sort by calculating ranking
+        #######################
+        #######################
+        #######################
 
         # ~ N(m, sigma^2 C)
         population = np.array([s[0] for s in solutions])
@@ -130,8 +129,6 @@ class CMAES:
         # Selection
         selected = y_k[: self._mu]
         y_w = np.mean(selected, axis=0) # cumulated delta vector
-
-        self._mean_history.append(self._criteria[0](self._xmean))
 
         self._xmean += self._sigma * y_w
 
@@ -184,7 +181,7 @@ class CMAES:
         self._path_c = ((1 - self._time_c) * self._path_c +
                         np.sqrt(self._time_c * (2 - self._time_c) * self._mu) * y_w)
 
-        # np.outer(v, v) == np.mat_mul(v, v.T)
+        # np.outer(v, v) <==> np.mat_mul(v, v.T)
         rank_one = np.outer(self._path_c, self._path_c)
         rank_mu = np.mean([np.outer(d, d) for d in selected], axis=0)
         self._C = (
@@ -192,27 +189,3 @@ class CMAES:
                 + self._lr_c1 * rank_one
                 + self._lr_c_mu * rank_mu
         )
-    
-    def sigma_history(self) -> List[float]:
-        return self._sigma_history
-
-    def diff_history(self) -> List[float]:
-        diffs = [1]
-        for i in range(len(self._sigma_history) - 1):
-            diffs.append(self._sigma_history[i+1] / self._sigma_history[i])
-        return diffs
-
-    def cond_history(self) -> List[float]:
-        greatest = self._eigen_history[:,-1]
-        smallest = self._eigen_history[:,0]
-        result = greatest/(smallest+_EPS)
-        return result
-        
-    def eigen_history(self) -> np.ndarray:
-        return self._eigen_history
-
-    def mean_history(self) -> List[float]:
-        return self._mean_history
-
-    def evals_per_iteration(self) -> int:
-        return self._lambda
