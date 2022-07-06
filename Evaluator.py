@@ -1,4 +1,33 @@
-from lib2to3.pgen2.literals import evalString
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
+#NOT USED RIGHT NOW
+
 from cmaes import CMAES
 from typing import List, Tuple
 import numpy as np
@@ -106,9 +135,9 @@ def _format_eigenvalues(eigens_list: List, evals_per_gen: int) -> Tuple:
         other_axes.append(sum[:,i])
     return x_axis, other_axes
 
-def just_show(dimensions: int, iterations: int, lbd: int, stop_after: int, objective):
+def just_show(dimensions: int, iterations: int, lbd: int, stop_after: int, visual: bool, objective):
     for _ in range(iterations):
-        algo = CMAES(objective, dimensions, stop_after, lbd, visuals=True)
+        algo = CMAES(objective, dimensions, stop_after, lbd, visuals=visual)
 
 def run_test(dimensions: int, iterations: int, lbd: int, stop_after: int, visual: bool, objectives: List[str]):
     """

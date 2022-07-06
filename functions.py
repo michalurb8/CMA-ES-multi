@@ -1,78 +1,91 @@
 import numpy as np
 
-gaussian = lambda x, y, xmu=0, ymu=0 : -np.exp(-((x-xmu)**2+(y-ymu)**2)/4)
+gaussian2 = lambda x, y, xmu=0, ymu=0 : -np.exp(-((x-xmu)**2+(y-ymu)**2)/4)
 
-criteriumDict = {
-    "dwa punkty" : [
-        lambda pair : gaussian(pair[0],pair[1], 0,3),
-        lambda pair : gaussian(pair[0],pair[1], 3,0),
+criteriumList = [
+    [
+        # dwa punkty
+        lambda p : gaussian2(p[0],p[1], 0,3),
+        lambda p : gaussian2(p[0],p[1], 3,0),
     ],
 
-    # "dwa hantle równowaga plus punkt" : [
-    #     lambda x,y : 0.6*gaussian(x,y, 0,3) + 0.4*gaussian(x,y, 0,-2),
-    #     lambda x,y : 0.6*gaussian(x,y, 3,0) + 0.4*gaussian(x,y, -2,0),
-    #     lambda x,y : gaussian(x,y),
-    # ],
+    [
+        # dwa hantle równowaga plus punkt
+        lambda p : 0.6*gaussian2(p[0],p[1], 0,3) + 0.4*gaussian2(p[0],p[1], 0,-2),
+        lambda p : 0.6*gaussian2(p[0],p[1], 3,0) + 0.4*gaussian2(p[0],p[1], -2,0),
+        lambda p : gaussian2(p[0],p[1])
+    ],
 
-    # "dwa hantle równowaga" : [
-    #     lambda x,y : 0.6*gaussian(x,y, 0,3) + 0.4*gaussian(x,y, 0,-2),
-    #     lambda x,y : 0.6*gaussian(x,y, 3,0) + 0.4*gaussian(x,y, -2,0),
-    # ],
+    [
+        # dwa hantle równowaga
+        lambda p : 0.6*gaussian2(p[0],p[1], 0,3) + 0.4*gaussian2(p[0],p[1], 0,-2),
+        lambda p : 0.6*gaussian2(p[0],p[1], 3,0) + 0.4*gaussian2(p[0],p[1], -2,0),
+    ],
 
-    # "rosenbrock" : [
-    #     lambda x,y : 0.01*(x-1)**2 + (y-x**2)**2,
-    #     lambda x,y : gaussian(x,y)
-    # ],
+    [
+        # rosenbrock i punkt
+        lambda p : 0.01*(p[0]-1)**2 + (p[1]-p[0]**2)**2,
+        lambda p : gaussian2(p[0],p[1])
+    ],
 
-    # "sinusy" : [
-    #     lambda x,y : np.sin(0.2*x)*(0.2*x-1)*(0.2*y-2),
-    #     lambda x,y : np.cos(0.2*y)*0.2*x
-    # ],
+    [
+        # sinusy
+        lambda p : np.sin(0.2*p[0])*(0.2*p[0]-1)*(0.2*p[1]-2),
+        lambda p : np.cos(0.2*p[1])*0.2*p[0]
+    ],
 
-    # "równe hantle plus punkt" : [
-    #     lambda x,y : gaussian(x,y, 2,2) + gaussian(x,y, 2,-2),
-    #     lambda x,y : gaussian(x,y, -2,0.1),
-    # ],
+    [
+        # równe hantle plus punkt
+        lambda p : gaussian2(p[0],p[1], 2,2) + gaussian2(p[0],p[1], 2,-2),
+        lambda p : gaussian2(p[0],p[1], -2,0.1),
+    ],
 
-    # "nierówno skrzyżowane hantle" : [
-    #     lambda x,y : gaussian(x,y, 0,3) + gaussian(x,y, 0,-2),
-    #     lambda x,y : gaussian(x,y, 3,0) + gaussian(x,y, -2,0),
-    # ],
+    [
+        # nierówno skrzyżowane hantle
+        lambda p : gaussian2(p[0],p[1], 0,3) + gaussian2(p[0],p[1], 0,-2),
+        lambda p : gaussian2(p[0],p[1], 3,0) + gaussian2(p[0],p[1], -2,0),
+    ],
 
-    # "linia plus punkt" : [
-    #     lambda x,y : gaussian(x,y, 0,0),
-    #     lambda x,y : (x+y)/10
-    # ],
+    [
+        # linia plus punkt
+        lambda p : gaussian2(p[0],p[1], 0,0),
+        lambda p : (p[0]+p[1])/10
+    ],
 
-    # "linia plus równe hantle plus punkt" : [
-    #     lambda x,y : gaussian(x,y, 2,2) + gaussian(x,y, 2,-2),
-    #     lambda x,y : gaussian(x,y, -2,0),
-    #     lambda x,y : (x+y)/10
-    # ],
+    [
+        # linia plus równe hantle plus punkt
+        lambda p : gaussian2(p[0],p[1], 2,2) + gaussian2(p[0],p[1], 2,-2),
+        lambda p : gaussian2(p[0],p[1], -2,0),
+        lambda p : (p[0]+p[1])/10
+    ],
 
-    # "kwadrat" : [
-    #     lambda x,y : gaussian(x,y,2,2),
-    #     lambda x,y : gaussian(x,y,-2,2),
-    #     lambda x,y : gaussian(x,y,-2,-2),
-    #     lambda x,y : gaussian(x,y,2,-2),
-    # ],
+    [
+        # kwadrat
+        lambda p : gaussian2(p[0],p[1],2,2),
+        lambda p : gaussian2(p[0],p[1],-2,2),
+        lambda p : gaussian2(p[0],p[1],-2,-2),
+        lambda p : gaussian2(p[0],p[1],2,-2),
+    ],
 
-    # "trójkąt równoramienny" : [
-    #     lambda x,y : gaussian(x,y,-2,-2),
-    #     lambda x,y : gaussian(x,y,2,-2),
-    #     lambda x,y : gaussian(x,y,0,3),
-    # ],
+    [
+        # trójkąt równoramienny
+        lambda p : gaussian2(p[0],p[1],-2,-2),
+        lambda p : gaussian2(p[0],p[1],2,-2),
+        lambda p : gaussian2(p[0],p[1],0,3),
+    ],
 
-    # "trzy współniniowe" : [
-    #     lambda x,y : gaussian(x,y,2,0),
-    #     lambda x,y : gaussian(x,y,-2,0),
-    #     lambda x,y : gaussian(x,y,0,0),
-    # ],
+    [
+        # trzy współniniowe
+        lambda p : gaussian2(p[0],p[1],2,0),
+        lambda p : gaussian2(p[0],p[1],-2,0),
+        lambda p : gaussian2(p[0],p[1],0,0),
+    ],
 
-    # "skrzyżowane nierówne hantle" : [
-    #     lambda x,y : 0.501*gaussian(x,y, 0,2) + 0.499*gaussian(x,y, 0,-2),
-    #     lambda x,y : 0.501*gaussian(x,y, 2,0) + 0.499*gaussian(x,y, -2,0),
-    # ],
-}
+    [
+        # skrzyżowane nierówne hantle
+        lambda p : 0.501*gaussian2(p[0],p[1], 0,2) + 0.499*gaussian2(p[0],p[1], 0,-2),
+        lambda p : 0.501*gaussian2(p[0],p[1], 2,0) + 0.499*gaussian2(p[0],p[1], -2,0),
+    ],
+]
 
-criteria = criteriumDict[list(criteriumDict.keys())[0]]
+criteria = criteriumList[0]

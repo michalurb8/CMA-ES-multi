@@ -79,20 +79,15 @@ class CMAES:
         self._generation = 0
 
         # Store important values at each generation
-        self._results = []
         self._sigma_history = []
         self._eigen_history = np.zeros((self._stop_after, self._dimension))
         self._mean_history = []
 
-        # Store best found value so far for ECDF calculation
-        self._best_value = infp
-
         # Run the algorithm immediately
-        self._generation_loop()
+        self._run()
 
-    def _generation_loop(self):
-        assert self._results == [], "One algorithm instance can only run once."
-        for gen_count in range(self._stop_after):
+    def _run(self):
+        for _ in range(self._stop_after):
             self._B, self._D = self._eigen_decomposition()
 
             self._sigma_history.append(self._sigma)
@@ -107,7 +102,6 @@ class CMAES:
             # Update algorithm parameters.
             assert len(solutions) == self._lambda, "There must be exactly lambda points generated"
             self._update(solutions)
-            self._results.append((gen_count, self._best_value))
 
     def _sample_solution(self) -> np.ndarray:
         std = np.random.standard_normal(self._dimension)
@@ -220,15 +214,5 @@ class CMAES:
     def mean_history(self) -> List[float]:
         return self._mean_history
 
-    def ecdf_history(self, targets: np.array) -> List[float]:
-        ecdf = []
-        for result in self._results:
-            passed = 0
-            for target in targets:
-                if result[1] <= target:
-                    passed += 1
-            ecdf.append(passed / len(targets))
-        return ecdf
-    
     def evals_per_iteration(self) -> int:
         return self._lambda

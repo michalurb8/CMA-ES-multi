@@ -1,6 +1,6 @@
 import argparse
-import Evaluator
 from functions import criteria
+from cmaes import CMAES
 
 parser = argparse.ArgumentParser(prog="CMA-ES",
                                  description='This program allows you to run CMA-ES')
@@ -17,13 +17,13 @@ parser.add_argument('-l', '--lbd', type=int, default=None,
 parser.add_argument('-s', '--stop', type=int, default=150,
                     help='How many iterations to take average of.')
 
-parser.add_argument('-v', '--vis', default=False,
-                    help='Turn on visualisation.', action='store_true')
+parser.add_argument('-v', '--vis', default=True,
+                    help='Turn on visualisation.', action='store_false')
 
 parser.add_argument('-o', '--objective', type=str, default="elliptic",
                     help='Objective function')
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    Evaluator.just_show(args.dimensions, args.iterations, args.lbd, args.stop, criteria)
-    # Evaluator.run_test(args.dimensions, args.iterations, args.lbd, args.stop, args.vis, [functions.Get_by_name(args.objective)])
+    for _ in range(args.iterations):
+        algo = CMAES(criteria, args.dimensions, args.stop, args.lbd, args.vis)
