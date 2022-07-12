@@ -17,10 +17,10 @@ parser.add_argument('-l', '--lbd', type=int, default=None,
 parser.add_argument('-s', '--stop', type=int, default=150,
                     help='How many iterations to take average of.')
 
-parser.add_argument('-v', '--vis', default=True,
-                    help='Turn off visualisation.', action='store_false')
+parser.add_argument('-v', '--vis', default=False,
+                    help='Turn off visualisation.', action='store_true')
 
 if __name__ == '__main__':
     args = parser.parse_args()
     for _ in range(args.iterations):
-        algo = CMAES(criteria, args.dimensions, args.stop, args.lbd, args.vis)
+        algo = CMAES(criteria, args.dimensions, args.stop, args.lbd, not args.vis)

@@ -1,15 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
+import ndsorter
+from random import shuffle
 
 _EPS = 1e-50
 _POINT_MAX = 1e100
 _SIGMA_MAX = 1e100
 
-_DELAY = 0.3
+_DELAY = 0.1
 
-infp = float('inf')
-infn = float('-inf')
+INF = float('inf')
+
+# COLORS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'magenta']
+COLORS = ['red', 'blue', 'green', 'black', 'cyan', 'orange', 'purple', 'magenta', 'yellow']
+COLOR_NUM = len(COLORS)
 
 class CMAES:
     """
@@ -34,7 +39,7 @@ class CMAES:
         self._visuals = visuals
 
         # Initial point
-        self._xmean = np.random.uniform(size = self._dimension)
+        self._xmean = 5*np.random.normal(size = self._dimension)
         # Step size
         self._sigma = 1
 
@@ -78,6 +83,7 @@ class CMAES:
         # Store current generation number
         self._generation = 0
 
+        self.contours_calculated = False
         # Run the algorithm immediately
         self._run()
 
@@ -90,7 +96,7 @@ class CMAES:
                 x = self._sample_solution()
 
                 values = np.array([criterium(x) for criterium in self._criteria])
-                solutions.append((x, values))
+                solutions.append([x, values, INF])
             # Update algorithm parameters.
             assert len(solutions) == self._lambda, "There must be exactly lambda points generated"
             self._update(solutions)
@@ -113,13 +119,9 @@ class CMAES:
 
         self._generation += 1
 
-        #######################
-        #######################
-        #######################
-        # TODO sort by calculating ranking
-        #######################
-        #######################
-        #######################
+        ndsorter.calcRank(solutions)
+        shuffle(solutions)
+        solutions.sort(key=lambda solution: solution[-1]) #sort population by rank
 
         # ~ N(m, sigma^2 C)
         population = np.array([s[0] for s in solutions])
@@ -133,15 +135,32 @@ class CMAES:
         self._xmean += self._sigma * y_w
 
         if self._visuals == True and self._dimension > 1:
-            title = "Iteracja " + str(self._generation) + ", \n"
-            title += "Liczebność populacji: " + str(self._lambda) + ", \n"
-            title += "Wymiarowość: " + str(self._dimension) + ", \n"
+            title = "Iteracja " + str(self._generation) + ", "
+            title += "Liczebność populacji: " + str(self._lambda) + ", "
+            title += "Wymiarowość: " + str(self._dimension)
             # title += "Funkcja celu: " + str(self._fitness.__name__)
-            plt.rcParams["figure.figsize"] = (8,9)
-            plt.rcParams['font.size'] = '22'
+            plt.rcParams["figure.figsize"] = (7,7)
+            plt.rcParams['font.size'] = '12'
             plt.tight_layout()
-            plt.subplots_adjust(top = 0.8, bottom = 0.1, left = 0.1, right = 0.99)
+            plt.subplots_adjust(top = 0.95, bottom = 0.1, left = 0.1, right = 0.99)
             plt.title(title)
+
+            x_ax = np.linspace(-5, 5, 100)
+            y_ax = np.linspace(-5, 5, 100)
+            xGrid, yGrid = np.meshgrid(x_ax, y_ax)
+
+            if not self.contours_calculated:
+                self.zs = []
+                for index, criterium in enumerate(self._criteria):
+                    newZ = criterium([xGrid, yGrid])
+                    newZ = newZ - np.amin(newZ)
+                    newZ = newZ / np.amax(newZ)
+                    newZ = 10 * newZ
+                    self.zs.append(newZ)
+                self.contours_calculated = True
+
+            for index, z in enumerate(self.zs):
+                plt.contour(xGrid, yGrid, z, levels=list(np.array(list(range(30)))/3), colors=COLORS[index%COLOR_NUM], alpha=0.3)
 
             # plt.axis('equal')
 
@@ -155,11 +174,11 @@ class CMAES:
             plt.scatter(x1, x2, s=15)
             plt.scatter(self._xmean[-1], self._xmean[-2], s=100, c='black')
             plt.grid()
-            zoom_out = 1.3
-            max1 = zoom_out*max([abs(point[-1]) for point in population])
-            max2 = zoom_out*max([abs(point[-2]) for point in population])
-            plt.xlim(-max1, max1)
-            plt.ylim(-max2, max2)
+            # zoom_out = 1.3
+            # max1 = zoom_out*max([abs(point[-1]) for point in population])
+            # max2 = zoom_out*max([abs(point[-2]) for point in population])
+            plt.xlim(-5, 5)
+            plt.ylim(-5, 5)
             plt.pause(_DELAY)
             plt.clf()
             plt.cla()
