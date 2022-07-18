@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 import ndsorter
-from random import shuffle
 
 _EPS = 1e-50
 _POINT_MAX = 1e100
@@ -12,8 +11,8 @@ _DELAY = 0.1
 
 INF = float('inf')
 
-# COLORS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'magenta']
-COLORS = ['red', 'blue', 'green', 'black', 'cyan', 'orange', 'purple', 'magenta', 'yellow']
+# COLORS = ['black', 'red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'magenta']
+COLORS = ['black', 'blue', 'cyan', 'green', 'yellow', 'orange', 'red', 'purple', 'magenta']
 COLOR_NUM = len(COLORS)
 
 class CMAES:
@@ -85,7 +84,21 @@ class CMAES:
 
         self.contours_calculated = False
         # Run the algorithm immediately
+        self._calculateContours()
         self._run()
+
+    def _calculateContours(self):
+        x_ax = np.linspace(-5, 5, 100)
+        y_ax = np.linspace(-5, 5, 100)
+        self.xGrid, self.yGrid = np.meshgrid(x_ax, y_ax)
+
+        self.zs = []
+        for criterium in self._criteria:
+            newZ = criterium([self.xGrid, self.yGrid])
+            newZ = newZ - np.amin(newZ)
+            newZ = newZ / np.amax(newZ)
+            newZ = 10 * newZ
+            self.zs.append(newZ)
 
     def _run(self):
         for _ in range(self._stop_after):
@@ -120,7 +133,6 @@ class CMAES:
         self._generation += 1
 
         ndsorter.calcRank(solutions)
-        shuffle(solutions)
         solutions.sort(key=lambda solution: solution[-1]) #sort population by rank
 
         # ~ N(m, sigma^2 C)
@@ -145,38 +157,33 @@ class CMAES:
             plt.subplots_adjust(top = 0.95, bottom = 0.1, left = 0.1, right = 0.99)
             plt.title(title)
 
-            x_ax = np.linspace(-5, 5, 100)
-            y_ax = np.linspace(-5, 5, 100)
-            xGrid, yGrid = np.meshgrid(x_ax, y_ax)
-
-            if not self.contours_calculated:
-                self.zs = []
-                for index, criterium in enumerate(self._criteria):
-                    newZ = criterium([xGrid, yGrid])
-                    newZ = newZ - np.amin(newZ)
-                    newZ = newZ / np.amax(newZ)
-                    newZ = 10 * newZ
-                    self.zs.append(newZ)
-                self.contours_calculated = True
 
             for index, z in enumerate(self.zs):
-                plt.contour(xGrid, yGrid, z, levels=list(np.array(list(range(30)))/3), colors=COLORS[index%COLOR_NUM], alpha=0.3)
+                plt.contour(self.xGrid, self.yGrid, z, levels=list(np.array(list(range(30)))/3), colors=["red", "green", "blue"][index%COLOR_NUM], alpha=0.3)
+
+            # calculate divisor for rank coloring
+            maxRank = max([sol[2] for sol in solutions])
+            if maxRank+1 <= COLOR_NUM: divisor = 1
+            else: divisor = (maxRank/(COLOR_NUM-1))
 
             # plt.axis('equal')
+            plt.axvline(0, linewidth=2, c='black')
+            plt.axhline(0, linewidth=2, c='black')
 
-            plt.axvline(0, linewidth=4, c='black')
-            plt.axhline(0, linewidth=4, c='black')
-            x1 = [point[-1] for point in population]
-            x2 = [point[-2] for point in population]
-            plt.scatter(x1, x2, s=50)
-            x1 = [point[-1] for point in population[:self._mu]]
-            x2 = [point[-2] for point in population[:self._mu]]
-            plt.scatter(x1, x2, s=15)
-            plt.scatter(self._xmean[-1], self._xmean[-2], s=100, c='black')
+            # show not selected points:
+            x1 = [sol[0][0] for sol in solutions[self._mu:]]
+            x2 = [sol[0][1] for sol in solutions[self._mu:]]
+            col = [COLORS[int((sol[2]-1)//divisor) + 1] for sol in solutions[self._mu:]]
+            plt.scatter(x1, x2, s=10, c=col)
+
+            # show selected points, bigger:
+            x1 = [sol[0][0] for sol in solutions[:self._mu]]
+            x2 = [sol[0][1] for sol in solutions[:self._mu]]
+            col = [COLORS[int((sol[2]-1)//divisor) + 1] for sol in solutions[:self._mu]]
+            plt.scatter(x1, x2, s=30, c=col)
+
+            plt.scatter(self._xmean[0], self._xmean[1], s=100, c='black')
             plt.grid()
-            # zoom_out = 1.3
-            # max1 = zoom_out*max([abs(point[-1]) for point in population])
-            # max2 = zoom_out*max([abs(point[-2]) for point in population])
             plt.xlim(-5, 5)
             plt.ylim(-5, 5)
             plt.pause(_DELAY)
