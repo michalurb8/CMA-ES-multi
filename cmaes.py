@@ -11,8 +11,8 @@ _DELAY = 0.1
 
 INF = float('inf')
 
-# COLORS = ['black', 'red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'magenta']
-COLORS = ['black', 'blue', 'cyan', 'green', 'yellow', 'orange', 'red', 'purple', 'magenta']
+# COLORS = ['black', 'blue', 'cyan', 'green', 'yellow', 'orange', 'red', 'purple', 'magenta']
+COLORS = ['green', 'cyan', 'blue', 'purple', 'magenta', 'red', 'orange', 'yellow', 'black']
 COLOR_NUM = len(COLORS)
 
 class CMAES:
@@ -97,7 +97,8 @@ class CMAES:
             newZ = criterium([self.xGrid, self.yGrid])
             newZ = newZ - np.amin(newZ)
             newZ = newZ / np.amax(newZ)
-            newZ = 10 * newZ
+            newZ = newZ ** 1.5
+            newZ = 5 * newZ
             self.zs.append(newZ)
 
     def _run(self):
@@ -147,7 +148,7 @@ class CMAES:
         self._xmean += self._sigma * y_w
 
         if self._visuals == True and self._dimension > 1:
-            title = "Iteracja " + str(self._generation) + ", "
+            title = "Iteracja: " + str(self._generation) + ", "
             title += "Liczebność populacji: " + str(self._lambda) + ", "
             title += "Wymiarowość: " + str(self._dimension)
             # title += "Funkcja celu: " + str(self._fitness.__name__)
