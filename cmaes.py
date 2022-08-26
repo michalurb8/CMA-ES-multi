@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 import ndsorter
+from surro import getBackgroundData
 
 _EPS = 1e-50
 _POINT_MAX = 1e100
@@ -30,7 +31,7 @@ class CMAES:
     visuals: bool
         If True, every algorithm generation will be visualised (only 2 first dimensions)
     """
-    def __init__(self, objective_functions, dimensions: int, stop_after:int, lambda_arg: int = None, visuals: bool = False):
+    def __init__(self, objective_functions, dimensions: int, stop_after:int, res:int, visuals: bool, lambda_arg: int = None):
         assert dimensions > 0, "Number of dimensions must be greater than 0"
         self._dimension = dimensions
         self._criteria = objective_functions
@@ -85,7 +86,11 @@ class CMAES:
         self.contours_calculated = False
         # Run the algorithm immediately
         self._calculateContours()
+        self._calculateIsolines(res)
         self._run()
+
+    def _calculateIsolines(self, res):
+        self.xIso, self.yIso, self.rIso, self.levels = getBackgroundData(res)
 
     def _calculateContours(self):
         x_ax = np.linspace(-5, 5, 100)
@@ -155,12 +160,14 @@ class CMAES:
             plt.rcParams["figure.figsize"] = (7,7)
             plt.rcParams['font.size'] = '12'
             plt.tight_layout()
-            plt.subplots_adjust(top = 0.95, bottom = 0.1, left = 0.1, right = 0.99)
+            plt.subplots_adjust(top = 0.95, bottom = 0.1, left = 0.15, right = 0.99)
             plt.title(title)
 
 
             for index, z in enumerate(self.zs):
-                plt.contour(self.xGrid, self.yGrid, z, levels=list(np.array(list(range(30)))/3), colors=["red", "green", "blue"][index%COLOR_NUM], alpha=0.3)
+                plt.contour(self.xGrid, self.yGrid, z, levels=list(np.array(list(range(30)))/3), colors=["red", "green", "blue"][index%COLOR_NUM], alpha=0.2, zorder=1)
+            
+            plt.tricontour(self.xIso, self.yIso, self.rIso, linewidths = 2, levels=self.levels, alpha=0.5, zorder=2)
 
             # calculate divisor for rank coloring
             maxRank = max([sol[2] for sol in solutions])
@@ -175,21 +182,21 @@ class CMAES:
             x1 = [sol[0][0] for sol in solutions[self._mu:]]
             x2 = [sol[0][1] for sol in solutions[self._mu:]]
             col = [COLORS[int((sol[2]-1)//divisor) + 1] for sol in solutions[self._mu:]]
-            plt.scatter(x1, x2, s=10, c=col)
+            plt.scatter(x1, x2, s=10, c=col, zorder = 3)
 
             # show selected points, bigger:
             x1 = [sol[0][0] for sol in solutions[:self._mu]]
             x2 = [sol[0][1] for sol in solutions[:self._mu]]
             col = [COLORS[int((sol[2]-1)//divisor) + 1] for sol in solutions[:self._mu]]
-            plt.scatter(x1, x2, s=30, c=col)
+            plt.scatter(x1, x2, s=30, c=col, zorder = 3)
 
-            plt.scatter(self._xmean[0], self._xmean[1], s=100, c='black')
+            plt.scatter(self._xmean[0], self._xmean[1], s=100, c='black', zorder = 3)
             plt.grid()
             plt.xlim(-5, 5)
             plt.ylim(-5, 5)
             plt.pause(_DELAY)
-            plt.clf()
             plt.cla()
+            plt.clf()
 
         # Step-size control
         # C^(-1/2) = B D^(-1) B^T

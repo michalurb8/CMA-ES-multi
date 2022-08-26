@@ -1,5 +1,10 @@
+from posixpath import dirname
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import hashlib
+import pickle
+from sys import stdout
 
 from functions import criteria, funName
 
@@ -7,84 +12,89 @@ COLORS = ['red', 'black', 'green']
 COLOR_NUM = len(COLORS)
 INF = float('inf')
 
-def func():
-    fileName = hashName(funName)
+def getBackgroundData(rang = 30):
+    res = 2*rang + 1
+
+    fileName = str(funName) + "_" + str(rang)
+    print("fileName", fileName)
     fileExists = False
 
-    # check if file exists TODO
+    dirName = "cached"
+    if not os.path.isdir(".\\" + dirName):
+        os.mkdir(dirName)
+
+    wholePath = ".\\" + dirName + "\\" + fileName
+    fileExists = os.path.isfile(wholePath)
 
     if fileExists:
         print("File found!")
-        #LOAD from file, then return TODO
-    print("File not found, calculating and saving to file...")
+        with open(wholePath, 'rb') as file:
+            xGrid, yGrid, rGrid, levels = pickle.load(file)
+        return (xGrid, yGrid, rGrid, levels)
+    else:
+        print("File not found. Generating points...")
 
-    rang = 50
-    res = 2*rang + 1
+        points = generatePoints(res)
+        print("Points generated. Calculating ranks...")
 
+        calcRank(points)
+        print("Ranks calculated. Clearing...")
+        points = cleared(points)
+        print("Points cleared. Drawing...")
 
-    scale = 5
+        maxRank = max([point[2] for point in points])
+        print("maxrank:", maxRank)
+        xGrid, yGrid, rGrid = np.array(list(zip(*points)))
+        step = int(np.power(maxRank, 0.33))
+        levels = [*np.array(range(step)), *(np.array(range(step))*(step-1) + step), *(np.array(range(step))*step*(step-1) + step*step)]
 
-    fig, ax = plt.subplots()
-    _drawBG(ax, scale)
+        print("Saving to file...")
+        file = open(wholePath, 'wb')
+        pickle.dump([xGrid, yGrid, rGrid, levels], file)
 
-    points = generatePoints(res, scale)
-    print("Points generated")
-
-    calcRank(points)
-    points = cleared(points)
-    print("Ranks calculated")
-
-    maxRank = max([point[2] for point in points])
-    print("maxrank:", maxRank)
-    xGrid, yGrid, rGrid = np.array(list(zip(*points)))
-    step = int(np.power(maxRank, 0.33))
-    print("maxstep:", step*step*(step-1) + step*step)
-    levels = [*np.array(range(step)), *(np.array(range(step))*(step-1) + step), *(np.array(range(step))*step*(step-1) + step*step)]
-    # save to file TODO
-    ax.tricontour(xGrid, yGrid, rGrid, linewidths = 2, levels=levels)
-    ax.set_xlim((-1,1))
-    ax.set_ylim((-1,1))
-
-    print("Points drawing...")
-    plt.show()
+        with open(wholePath, 'rb') as file:
+            xGrid, yGrid, rGrid, levels = pickle.load(file)
+        return xGrid, yGrid, rGrid, levels
 
 def cleared(points): # change the structure of points list. Removing nesting and discarding criterias' values
     points = [[point[0][0], point[0][1], point[2]] for point in points]
     return points
 
-def generatePoints(res, scale):
+def generatePoints(res):
+    rang = res // 2
     points = []
-    for _ in range(res):
-        for _ in range(res):
-            newX = np.random.uniform()*2 - 1
-            newY = np.random.uniform()*2 - 1
-            crit = np.array([criterium((newX*scale, newY*scale)) for criterium in criteria])
+    for x in range(res):
+        for y in range(res):
+            # newX = np.random.uniform()*10 - 5; newY = np.random.uniform()*10 - 5; # uniform -5 to 5
+            newX = np.random.normal()*2; newY = np.random.normal()*2; # normal -5 to 5
+            crit = np.array([criterium((newX, newY)) for criterium in criteria])
             newPoint = [np.array([newX, newY]), crit, INF]
             points.append(newPoint)
     return points
 
 def calcRank(points):
     currentRank = 0
-    i = 0
     while INF in [point[2] for point in points]:
-        i += 1
+        stdout.write(f"\rCurrently calculated rank: {currentRank}")
+        stdout.flush()
         for currentPoint in points:
             if currentPoint[2] < currentRank: continue
             for otherPoint in points:
                 if otherPoint[2] >= currentRank and isDominated(currentPoint, otherPoint):
                     break
             else:
-                currentPoint[2]=currentRank
+                currentPoint[2] = currentRank
         currentRank += 1
+    print()
 
-def _drawBG(ax, scale, res = 101):
+def _drawBG(ax, res = 101):
     x_ax = np.linspace(-1, 1, res)
     y_ax = np.linspace(-1, 1, res)
 
     xGrid, yGrid = np.meshgrid(x_ax, y_ax)
 
     for index, criterium in enumerate(criteria):
-        z = criterium((xGrid*scale, yGrid*scale))
+        z = criterium((xGrid, yGrid))
         z = z - np.amin(z)
         z = z / np.amax(z)
         z = 10 * z
@@ -97,7 +107,8 @@ def isDominated(p1, p2):
     return True
 
 def hashName(name):
-    return int(abs(hash(name)))
+    result = hashlib.md5(name.encode()).hexdigest()
+    return result
 
 if __name__ == "__main__":
-    func()
+    getBackgroundData()
